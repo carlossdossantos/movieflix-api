@@ -1,10 +1,13 @@
 import express from 'express';
 import { prisma } from '../lib/prisma.js';
+import swaggerUi from "swagger-ui-express";
+import swaggerDocument from "../swagger.json" with { type: 'json'}
 
 const port = 3000;
 const app = express();
 
 app.use(express.json());
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get('/movies', async (_, res) => {
     const movies = await prisma.movie.findMany({
@@ -108,6 +111,42 @@ app.delete("/movies/:id", async (req, res) => {
      } catch (error) {
         res.status(500).send("Falha ao tentar deletar o registro...")
      }
+})
+
+app.get("/movies/:genreName", async (req, res) => {
+    try {
+        // receber o nome do gênero pelos parametros da rota
+    const genreName = req.params.genreName;
+    // filtrar os filmes do banco pelo gênero
+
+    const moviesFilteredByGenreName = await prisma.movie.findMany({
+        where: {
+            genres:{
+                name: {
+                    equals: genreName,
+                    mode: "insensitive"
+                }
+            }
+        },
+        include: {
+            genres: true,
+            languages: true
+        }
+    })
+
+    if(moviesFilteredByGenreName.length == 0){
+        return res.status(404).send("Filme não tem o gênero mencionado")
+    }
+    
+    
+    // retornar os filmes filtrados na resposta da rota
+    res.status(200).send(moviesFilteredByGenreName);
+
+    
+
+    } catch (error) {
+        res.status(500).send("Falha ao buscar filme por gênero")
+    }
 })
 
 app.listen(port, () => {
